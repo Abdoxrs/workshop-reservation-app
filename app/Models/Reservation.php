@@ -18,18 +18,18 @@ class Reservation extends Model
         'status',
     ];
 
+    
     public function workshop(): BelongsTo{
         return $this->belongsTo(Workshop::class);
     }
 
+
     public function scopeConfirmed(Builder $query): Builder {
         return $query->where('status', 'confirmed');
     }
-
     public function scopeWaitlisted(Builder $query): Builder{
         return $query->where('status', 'waitlisted');
     }
-
     public function scopeCancelled(Builder $query): Builder {
         return $query->where('status', 'cancelled');
     }

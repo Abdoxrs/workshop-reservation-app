@@ -20,8 +20,8 @@ class Workshop extends Model
 
     protected function casts(): array{
         return [
-            'scheduled_at' => 'datetime',
-            'capacity' => 'integer',];
+        'scheduled_at' => 'datetime',
+        'capacity' => 'integer'];
     }
 
     public function reservations(): HasMany{
@@ -38,8 +38,7 @@ class Workshop extends Model
 
     public function confirmedReservationsCount(): int{
         return $this->reservations()->confirmed()->count();
-    }
-
+    } // confirmed f is cmpleting avilable seats f
     public function availableSeats(): int{
         return max(0, $this->capacity - $this->confirmedReservationsCount());
     }
