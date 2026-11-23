@@ -61,12 +61,12 @@ class ReservationService
 
             $reservation->update(['status' => 'cancelled']);
 
-            $oldestWaitlisted = $lockedWorkshop->reservations()->waitlisted()
+            $oldWaitL = $lockedWorkshop->reservations()->waitlisted()
                 ->orderBy('created_at', 'asc')
                 ->orderBy('id', 'asc')->first();
 
-            if ($oldestWaitlisted) {
-                $oldestWaitlisted->update(['status' => 'confirmed']);
+            if ($oldWaitL) {
+                $oldWaitL->update(['status' => 'confirmed']);
             }
         });
     }
