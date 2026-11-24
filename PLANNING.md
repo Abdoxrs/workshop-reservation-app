@@ -24,10 +24,3 @@
 ## 4. Main Technical Risks & Mitigations
 - **Race Conditions:** Two visitors reserving the last seat simultaneously could exceed capacity. *Mitigation:* Wrap reservation creation in a database transaction with pessimistic locking (`lockForUpdate()`) on the `Workshop` row before counting confirmed seats.
 - **Waitlist Promotion:** Cancelling a confirmed reservation must atomically promote the oldest waitlisted reservation. *Mitigation:* Perform cancellation and promotion inside a single `DB::transaction()`.
-
-## 5. Estimated Effort
-- Models, migrations, seeders: ~1 hour
-- Business logic and controllers: ~2–3 hours
-- Views (plain Blade + Tailwind CDN): ~1–2 hours
-- Automated tests: ~1–2 hours
-- Documentation and polish: ~1 hour
