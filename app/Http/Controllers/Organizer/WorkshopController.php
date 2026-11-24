@@ -41,7 +41,7 @@ class WorkshopController extends Controller{
     return view('organizer.workshops.show', compact('workshop'));
     }
     public function publish(Workshop $workshop){
-        $workshop->update(['status' => true]);
+        $workshop->update(['status' => 'published']);
         return redirect()->back()->with('success', 'Workshop published successfully');
     }
 }

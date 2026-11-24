@@ -9,29 +9,37 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationService
 {
-    public function makeReservation(Workshop $workshop, string $name, string $email): Reservation{
-        if(! $workshop->isPublished()) {
+    public function makeReservation(Workshop $workshop, string $name, string $email): Reservation
+    {
+        if (! $workshop->isPublished()) {
             throw ValidationException::withMessages([
-                'workshop' =>'reservations are only allowed for published workshops only'
-            ]);
-        }
-        if ($workshop->hasStarted()) {
-            throw ValidationException::withMessages([
-                'workshop' =>'this workshop has already started n is no longer accepting reservations'
-            ]);
-        }
-        
-        $duplictes = $workshop->reservations()->where('attendee_email', $email)
-            ->where('status', '!=', 'cancelled')
-            ->exists(); // t or f
-        if ($duplictes) {
-            throw ValidationException::withMessages([
-                'attendee_email' => 'You have already reserved this workshop.',
+                'workshop' => 'Reservations are allowed for published workshops only.',
             ]);
         }
 
-        return DB::transaction(function () use ($workshop, $name, $email): Reservation {
-            $lockedWorkshop = Workshop::whereKey($workshop->id)->lockForUpdate()->firstOrFail();
+        if ($workshop->hasStarted()) {
+            throw ValidationException::withMessages([
+                'workshop' => 'This workshop has already started and is no longer accepting reservations.',
+            ]);
+        }
+
+        $normalizedEmail = strtolower(trim($email));
+
+        return DB::transaction(function () use ($workshop, $name, $normalizedEmail): Reservation {
+            $lockedWorkshop = Workshop::whereKey($workshop->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $duplicates = $lockedWorkshop->reservations()
+                ->where('attendee_email', $normalizedEmail)
+                ->where('status', '!=', 'cancelled')
+                ->exists();
+
+            if ($duplicates) {
+                throw ValidationException::withMessages([
+                    'attendee_email' => 'You have already reserved this workshop.',
+                ]);
+            }
 
             $confirmedCount = $lockedWorkshop->reservations()->confirmed()->count();
 
@@ -40,17 +48,18 @@ class ReservationService
                 : 'waitlisted';
 
             return $lockedWorkshop->reservations()->create([
-                'attendee_name' => $name,
-                'attendee_email' => $email,
+                'attendee_name' => trim($name),
+                'attendee_email' => $normalizedEmail,
                 'status' => $status,
             ]);
         });
     }
 
-    public function cancelReservation(Reservation $reservation): void{
+    public function cancelReservation(Reservation $reservation): void
+    {
         if ($reservation->status !== 'confirmed') {
             throw ValidationException::withMessages([
-                'reservation' => 'Only confirmed reservations can be cancelled',
+                'reservation' => 'Only confirmed reservations can be cancelled.',
             ]);
         }
 
@@ -61,9 +70,11 @@ class ReservationService
 
             $reservation->update(['status' => 'cancelled']);
 
-            $oldWaitL = $lockedWorkshop->reservations()->waitlisted()
+            $oldWaitL = $lockedWorkshop->reservations()
+                ->waitlisted()
                 ->orderBy('created_at', 'asc')
-                ->orderBy('id', 'asc')->first();
+                ->orderBy('id', 'asc')
+                ->first();
 
             if ($oldWaitL) {
                 $oldWaitL->update(['status' => 'confirmed']);
