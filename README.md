@@ -1,58 +1,123 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Mini Workshop Reservation Application
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-stack Laravel application where organizers create and publish workshops, and visitors reserve seats with concurrency-safe capacity enforcement, automatic waitlisting, and FIFO waitlist promotion upon cancellation.
 
-## About Laravel
+## Key Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Organizer Dashboard:** Create draft workshops, publish them when ready, monitor confirmed vs. waitlisted counts, and cancel confirmed reservations.
+- **Visitor Portal:** Browse published upcoming workshops, view live seat availability, and reserve a seat or join the waitlist.
+- **Automatic Waitlist & Promotion:** When a workshop reaches full capacity, new reservations are automatically marked as `waitlisted`. Cancelling a `confirmed` reservation promotes the oldest eligible `waitlisted` attendee (`created_at ASC, id ASC`).
+- **Concurrency Safety:** Uses database transactions with pessimistic row-level locking (`lockForUpdate()`) inside `ReservationService` to prevent overbooking under simultaneous requests.
+- **Zero Frontend Build Step:** Styled with Tailwind CSS via CDN using Blade layouts.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **PHP:** 8.1 or higher (with `pdo_mysql` and `pdo_sqlite` extensions enabled)
+- **Composer**
+- **MySQL:** 8.0+ (Laragon recommended for local Windows development)
 
-## Learning Laravel
+## Setup Instructions
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd <project-folder>
+   ```
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+2. **Install PHP dependencies:**
+   ```bash
+   composer install
+   ```
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+3. **Create your environment file:**
+   ```bash
+   cp .env.example .env
+   ```
 
-## Agentic Development
+4. **Generate the application key:**
+   ```bash
+   php artisan key:generate
+   ```
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+5. **Create and configure the MySQL database:**
+   - Open Laragon's **HeidiSQL** (or MySQL CLI) and create a database named `workshop_reservation`.
+   - Update the database settings in your `.env` file:
+     ```env
+     DB_CONNECTION=mysql
+     DB_HOST=127.0.0.1
+     DB_PORT=3306
+     DB_DATABASE=workshop_reservation
+     DB_USERNAME=root
+     DB_PASSWORD=
+     ```
+
+6. **Run migrations and seed sample data:**
+   ```bash
+   php artisan migrate --seed
+   ```
+   *(Seeds a draft workshop, an open published workshop, a full workshop with waitlisted attendees, and a past workshop.)*
+
+7. **Start the local development server:**
+   ```bash
+   php artisan serve
+   ```
+
+8. **Open the application in your browser:**
+   - **Visitor View:** `http://localhost:8000`
+   - **Organizer View:** `http://localhost:8000/organizer/workshops`
+
+## Running Tests
+
+The test suite runs against an isolated in-memory SQLite database configured in `phpunit.xml` without touching your local MySQL database:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php artisan test
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Key Routes
 
-## Contributing
+### Visitor Routes
+| Method | URI | Name | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | `workshops.index` | List all published workshops with remaining seat counts |
+| `GET` | `/workshops/{workshop}` | `workshops.show` | View published workshop details and reservation form |
+| `POST` | `/workshops/{workshop}/reserve` | `workshops.reserve` | Submit a seat reservation (auto-confirms or waitlists) |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Organizer Routes
+| Method | URI | Name | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/organizer/workshops` | `organizer.workshops.index` | List all workshops (Draft & Published) with confirmed counts |
+| `GET` | `/organizer/workshops/create` | `organizer.workshops.create` | Display form to create a new workshop |
+| `POST` | `/organizer/workshops` | `organizer.workshops.store` | Store a new workshop as `draft` |
+| `GET` | `/organizer/workshops/{workshop}` | `organizer.workshops.show` | View workshop details and manage attendee reservations |
+| `PATCH` | `/organizer/workshops/{workshop}/publish` | `organizer.workshops.publish` | Publish a draft workshop |
+| `PATCH` | `/organizer/reservations/{reservation}/cancel` | `organizer.reservations.cancel` | Cancel a confirmed reservation and promote oldest waitlisted attendee |
 
-## Code of Conduct
+### System Routes
+| Method | URI | Name | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | `health` | JSON health check verifying live database connectivity |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Completed Items
 
-## Security Vulnerabilities
+- Published workshop listing and detail pages
+- Reservation form with name and email
+- Duplicate email prevention per workshop
+- Automatic Confirmed vs Waitlisted status based on capacity
+- Draft and past-workshop reservation blocking
+- Organizer: create, publish, view reservations, cancel
+- Waitlist promotion on cancellation
+- Capacity enforcement
+- 6 required automated tests
+- Health check route
+- Planning note
+- `DEPLOYMENT.md`
+- `.env.example`
+- Database migrations, seeders, and factories
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Incomplete Items / Known Limitations
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- No authentication (organizer pages are publicly accessible as per assessment scope)
+- No email notifications for reservation confirmation or waitlist promotion
+- No pagination on workshop or reservation lists
+- UI is minimal/functional — no advanced styling

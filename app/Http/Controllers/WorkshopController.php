@@ -23,7 +23,6 @@ class WorkshopController extends Controller
 
     public function show(Workshop $workshop): View
     {
-        // منع الزوار من الوصول لأي ورشة ما زالت مسودة (Draft)
         abort_if(! $workshop->isPublished(), 404);
 
         $workshop->loadCount([
